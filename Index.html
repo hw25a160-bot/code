@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>FORT FARM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --fort-blue: #007bff;
+            --fort-yellow: #f8e71c;
+            --fort-purple: #a33cf2;
+            --rotten-color: #4a148c;
+            --grass-light: #4ade80;
+            --grass-dark: #22c55e;
+        }
+
+        body {
+            font-family: 'Luckiest Guy', cursive;
+            background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+            margin: 0;
+            color: white;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+        }
+
+        .japanese-font {
+            font-family: 'DotGothic16', sans-serif;
+        }
+
+        .container-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100dvh;
+            padding: 5px;
+            box-sizing: border-box;
+            z-index: 10;
+            filter: blur(0);
+            transition: filter 0.5s;
+        }
+
+        .is-paused .container-wrapper {
+            filter: blur(4px);
+            pointer-events: none;
+        }
+
+        .title-text {
+            font-size: clamp(2.5rem, 12vh, 4.5rem);
+            color: var(--fort-yellow);
+            text-shadow: 3px 3px 0px #000, 6px 6px 0px var(--fort-blue);
+            transform: skew(-5deg) rotate(-2deg);
+            margin-bottom: 5px;
+            letter-spacing: 2px;
+            line-height: 0.9;
+        }
+
+        .stats-area {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .stats-card {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            padding: 4px 12px;
+            border-radius: 10px;
+            border-bottom: 3px solid var(--fort-blue);
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .farm-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            width: 90vw;
+            max-width: 320px;
+            max-height: 50vh; 
+            margin: 0 auto;
+            position: relative;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 16px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .plot {
+            aspect-ratio: 1 / 1;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.1s;
+            border-radius: 8px;
+            z-index: 10;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: clamp(1.2rem, 8vh, 2rem);
+            overflow: hidden;
+        }
+
+        .plot:active { transform: scale(0.9); }
+        .dirt { background-color: #5d4037; box-shadow: inset 0 2px 4px rgba(0,0,0,0.4); }
+        .tilled { background-color: #3e2723; border: 1px solid #2d1a12; }
+        .rotten-land { background-color: var(--rotten-color); border: 1px solid #000; cursor: not-allowed; opacity: 0.8; }
+        
+        .targeted { animation: targetPulse 0.4s infinite alternate; }
+        @keyframes targetPulse {
+            from { box-shadow: 0 0 0px red; border-color: #ff0000; }
+            to { box-shadow: 0 0 15px red; border-color: #ffffff; }
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 3px; left: 3px; right: 3px; height: 4px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 2px;
+            overflow: hidden;
+            border: 0.5px solid white;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #22c55e);
+            width: 0%;
+        }
+
+        .pest {
+            position: absolute;
+            font-size: 2rem;
+            z-index: 50;
+            cursor: pointer;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+            transition: transform 0.1s;
+        }
+
+        .pest-moving { animation: wiggle 0.2s infinite alternate; }
+        @keyframes wiggle {
+            from { transform: rotate(-10deg) scale(0.95); }
+            to { transform: rotate(10deg) scale(1.05); }
+        }
+
+        .floating-text {
+            position: absolute;
+            animation: floatUp 0.8s ease-out forwards;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 100;
+            -webkit-text-stroke: 1px black;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.3); opacity: 0; }
+        }
+
+        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+            40%, 60% { transform: translate3d(3px, 0, 0); }
+        }
+
+        .info-panel {
+            margin-top: 10px;
+            width: 90vw;
+            max-width: 320px;
+        }
+
+        .fort-btn {
+            background: var(--fort-yellow);
+            color: #000;
+            border-bottom: 4px solid #b7a600;
+            transition: all 0.1s;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            padding: 8px 24px;
+            margin-top: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .fort-btn:active {
+            border-bottom-width: 1px;
+            transform: translateY(3px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .retire-btn {
+            background: #ef4444 !important;
+            color: white !important;
+            border-bottom-color: #991b1b !important;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            backdrop-filter: blur(8px);
+        }
+
+        #start-screen { z-index: 300; }
+
+        .level-badge {
+            background: var(--fort-purple);
+            color: white;
+            padding: 3px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin-top: 2px;
+            border-bottom: 2px solid rgba(0,0,0,0.3);
+        }
+
+        #sound-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            font-size: 24px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="is-paused">
+
+    <audio id="bgm" loop preload="auto">
+        <source src="https://raw.githubusercontent.com/hw25a160-bot/sound/main/maou_bgm_8bit23.mp3" type="audio/mpeg">
+    </audio>
+    
+    <!-- 攻撃SE用 -->
+    <audio id="se-attack" preload="auto">
+        <source src="https://raw.githubusercontent.com/hw25a160-bot/sound/main/maou_se_battle18.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- 収穫SE用 -->
+    <audio id="se-harvest" preload="auto">
+        <source src="https://raw.githubusercontent.com/hw25a160-bot/sound/main/maou_se_system49.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="sound-toggle" onclick="toggleSound()">🔊</div>
+
+    <!-- スタート画面 -->
+    <div id="start-screen" class="modal-overlay" onclick="startGame()">
+        <h1 class="title-text mb-12">FORT FARM</h1>
+        <div class="stats-card py-6 px-10 border-yellow-400">
+            <p class="japanese-font text-lg mb-4 animate-pulse">PRESS SPACE TO START</p>
+            <p class="japanese-font text-xs text-gray-400">(または画面をクリック)</p>
+        </div>
+        <div class="info-panel mt-12">
+            <div class="japanese-font bg-white/10 p-4 rounded-xl text-sm border-l-4 border-fort-blue text-left">
+                <p>🥬 野菜を育てて収穫しよう</p>
+                <p>🐛 害虫をクリックで退治！</p>
+                <p>💀 すべての土地が腐敗すると終了</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ゲームコンテナ -->
+    <div class="container-wrapper">
+        <div class="stats-area">
+            <div class="stats-card">
+                <span class="text-gray-300 text-[9px] block uppercase">Score</span>
+                <span id="score" class="text-xl text-white">0</span>
+            </div>
+            <div class="stats-card border-red-500">
+                <span class="text-gray-300 text-[9px] block uppercase">Eliminated</span>
+                <span id="pests-killed" class="text-xl text-red-400">0</span>
+            </div>
+        </div>
+        
+        <div id="level-display" class="level-badge mb-2 uppercase">Level: 1</div>
+
+        <div id="farm" class="farm-grid"></div>
+
+        <div class="info-panel">
+            <div class="japanese-font bg-black/60 p-2 rounded-lg text-[11px] text-center border-l-4 border-yellow-400">
+                <p>🐛=3HP | 🐝=Fast | 🐌=5HP</p>
+                <p class="text-red-400 font-bold">🚨 2匹以上で腐敗スピード2倍！</p>
+            </div>
+        </div>
+        
+        <!-- リタイアボタン -->
+        <button id="retire-btn" class="fort-btn retire-btn font-bold rounded-xl" onclick="retireGame()">
+            Retire
+        </button>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div id="overlay" class="modal-overlay" style="display: none;">
+        <h2 class="text-6xl text-red-500 mb-6" style="text-shadow: 3px 3px 0 #fff;">GAME OVER</h2>
+        <div class="stats-card mb-6 min-w-[240px] py-4">
+            <p class="text-gray-300 uppercase text-sm">Final Result</p>
+            <p class="text-4xl text-yellow-400 mt-2">Score: <span id="final-score">0</span></p>
+            <p class="text-2xl text-red-400">Pests: <span id="final-pests">0</span></p>
+            <div id="final-level" class="level-badge inline-block mt-3 text-base">Level 1</div>
+        </div>
+        <div class="flex flex-col gap-2">
+            <button class="fort-btn text-2xl px-16 py-4 rounded-2xl" onclick="initGame()">Play Again</button>
+            <button class="fort-btn retire-btn text-xl px-16 py-3 rounded-2xl" onclick="retireGame()">Title Screen</button>
+        </div>
+        <p class="japanese-font text-xs text-gray-400 mt-4">PRESS SPACE TO RETRY</p>
+    </div>
+
+    <script>
+        const farmElement = document.getElementById('farm');
+        const scoreElement = document.getElementById('score');
+        const pestElement = document.getElementById('pests-killed');
+        const levelElement = document.getElementById('level-display');
+        const overlay = document.getElementById('overlay');
+        const startScreen = document.getElementById('start-screen');
+        const bgm = document.getElementById('bgm');
+        const seAttack = document.getElementById('se-attack');
+        const seHarvest = document.getElementById('se-harvest');
+        const soundToggle = document.getElementById('sound-toggle');
+        
+        const finalScoreEl = document.getElementById('final-score');
+        const finalPestsEl = document.getElementById('final-pests');
+        const finalLevelEl = document.getElementById('final-level');
+
+        let score = 0;
+        let pestsKilled = 0;
+        let difficulty = 1;
+        let startTime = Date.now();
+        let isGameOver = false;
+        let isPaused = true;
+        let isMuted = false;
+        let hasInteracted = false;
+
+        const GRID_SIZE = 16;
+        const GROW_TIME = 5000;
+        const DIFFICULTY_INTERVAL = 10000; 
+        
+        const VEGETABLES = [
+            { emoji: '🥬', points: 10 },
+            { emoji: '🥕', points: 20 },
+            { emoji: '🍅', points: 30 },
+            { emoji: '🍆', points: 40 }
+        ];
+
+        const PEST_TYPES = [
+            { emoji: '🐛', hp: 3, speedMult: 1, weight: 60 },
+            { emoji: '🐝', hp: 2, speedMult: 1.8, weight: 25 },
+            { emoji: '🐌', hp: 5, speedMult: 0.6, weight: 15 }
+        ];
+
+        const STATES = {
+            EMPTY: 'empty',
+            TILLED: 'tilled',
+            GROWING: 'growing',
+            READY: 'ready',
+            ROTTEN: 'rotten'
+        };
+
+        let plots = [];
+        let spawnTimer = null;
+
+        // --- 音声管理 ---
+        function startBGM() {
+            bgm.currentTime = 0;
+            bgm.volume = 0.4;
+            bgm.play().then(() => {
+                hasInteracted = true;
+            }).catch(() => {
+                console.warn("BGM playback blocked.");
+            });
+        }
+
+        function stopBGM() {
+            bgm.pause();
+            bgm.currentTime = 0;
+        }
+
+        function playAttackSE() {
+            if (isMuted) return;
+            seAttack.currentTime = 0;
+            seAttack.volume = 0.5;
+            seAttack.play().catch(() => {});
+        }
+
+        function playHarvestSE() {
+            if (isMuted) return;
+            seHarvest.currentTime = 0;
+            seHarvest.volume = 0.6;
+            seHarvest.play().catch(() => {});
+        }
+
+        function toggleSound() {
+            isMuted = !isMuted;
+            bgm.muted = isMuted;
+            seAttack.muted = isMuted;
+            seHarvest.muted = isMuted;
+            soundToggle.innerText = isMuted ? '🔇' : '🔊';
+        }
+
+        // --- ナビゲーション ---
+        function startGame() {
+            if (!isPaused) return;
+            isPaused = false;
+            document.body.classList.remove('is-paused');
+            startScreen.style.display = 'none';
+            initGame();
+        }
+
+        function retireGame() {
+            stopBGM();
+            isGameOver = false;
+            isPaused = true;
+            if (spawnTimer) clearTimeout(spawnTimer);
+            
+            plots.forEach(plot => {
+                if (plot.timer) clearInterval(plot.timer);
+                if (plot.damageTimer) clearTimeout(plot.damageTimer);
+            });
+
+            document.body.classList.add('is-paused');
+            startScreen.style.display = 'flex';
+            overlay.style.display = 'none';
+            document.querySelectorAll('.pest').forEach(p => p.remove());
+        }
+
+        // --- ゲーム管理 ---
+        function initGame() {
+            isGameOver = false;
+            isPaused = false;
+            overlay.style.display = 'none';
+            startScreen.style.display = 'none';
+            document.body.classList.remove('is-paused');
+            
+            if (spawnTimer) clearTimeout(spawnTimer);
+            startBGM();
+
+            farmElement.innerHTML = '';
+            document.querySelectorAll('.pest').forEach(p => p.remove());
+            plots = [];
+            score = 0;
+            pestsKilled = 0;
+            difficulty = 1;
+            startTime = Date.now();
+            updateUI();
+
+            for (let i = 0; i < GRID_SIZE; i++) {
+                const plot = {
+                    id: i,
+                    state: STATES.EMPTY,
+                    veg: null,
+                    progress: 0,
+                    isTargeted: false,
+                    atPlotPests: [], 
+                    timer: null,
+                    damageTimer: null 
+                };
+                const el = document.createElement('div');
+                el.className = 'plot dirt flex items-center justify-center';
+                el.id = `plot-${i}`;
+                el.onclick = (e) => handlePlotClick(i, e);
+                farmElement.appendChild(el);
+                plots.push(plot);
+                updatePlotUI(i);
+            }
+            startPestSpawning();
+        }
+
+        // キーボード操作
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isPaused) {
+                    startGame();
+                } else if (isGameOver) {
+                    initGame();
+                }
+            }
+        });
+
+        function handlePlotClick(index, event) {
+            if (isGameOver || isPaused) return;
+            const plot = plots[index];
+            if (plot.atPlotPests.length > 0) {
+                attackPest(plot.atPlotPests[0]);
+                return;
+            }
+            switch (plot.state) {
+                case STATES.EMPTY: tilledPlot(index); break;
+                case STATES.READY: harvest(index); break;
+                case STATES.ROTTEN: 
+                    showFloatingText(index, "DEAD SOIL", "text-purple-400");
+                    const el = document.getElementById(`plot-${index}`);
+                    el.classList.add('shake');
+                    setTimeout(() => el.classList.remove('shake'), 200);
+                    break;
+            }
+        }
+
+        function tilledPlot(index) {
+            const plot = plots[index];
+            plot.state = STATES.TILLED;
+            updatePlotUI(index);
+            setTimeout(() => startGrowing(index), 500);
+        }
+
+        function startGrowing(index) {
+            const plot = plots[index];
+            if (plot.state !== STATES.TILLED || isGameOver) return;
+            plot.state = STATES.GROWING;
+            plot.veg = VEGETABLES[Math.floor(Math.random() * VEGETABLES.length)];
+            plot.progress = 0;
+            updatePlotUI(index);
+            const interval = 100;
+            plot.timer = setInterval(() => {
+                if (isGameOver || isPaused) { clearInterval(plot.timer); return; }
+                if (plot.atPlotPests.length > 0) return; 
+                plot.progress += (interval / GROW_TIME) * 100;
+                const bar = document.querySelector(`#plot-${index} .progress-fill`);
+                if (bar) bar.style.width = `${plot.progress}%`;
+                if (plot.progress >= 100) {
+                    clearInterval(plot.timer);
+                    plot.state = STATES.READY;
+                    updatePlotUI(index);
+                }
+            }, interval);
+        }
+
+        function harvest(index) {
+            const plot = plots[index];
+            
+            // 収穫SEを再生
+            playHarvestSE();
+            
+            showFloatingText(index, `+${plot.veg.points}`, 'text-yellow-400');
+            score += plot.veg.points;
+            resetPlot(index);
+            updateUI();
+        }
+
+        function resetPlot(index) {
+            const plot = plots[index];
+            if (plot.timer) clearInterval(plot.timer);
+            if (plot.damageTimer) clearTimeout(plot.damageTimer);
+            plot.state = STATES.EMPTY;
+            plot.veg = null;
+            plot.progress = 0;
+            plot.isTargeted = false;
+            updatePlotUI(index);
+        }
+
+        function updatePlotUI(index) {
+            const plot = plots[index];
+            const el = document.getElementById(`plot-${index}`);
+            if(!el) return;
+            el.className = 'plot flex items-center justify-center ';
+            if (plot.isTargeted) el.classList.add('targeted');
+            el.innerHTML = '';
+            switch (plot.state) {
+                case STATES.EMPTY: el.classList.add('dirt'); break;
+                case STATES.TILLED: el.classList.add('tilled'); el.innerHTML = '⛏️'; break;
+                case STATES.GROWING:
+                    el.classList.add('tilled');
+                    el.innerHTML = `<span class="opacity-40 scale-75">${plot.veg.emoji}</span>
+                                   <div class="progress-bar"><div class="progress-fill"></div></div>`;
+                    break;
+                case STATES.READY: el.classList.add('tilled'); el.innerHTML = plot.veg.emoji; break;
+                case STATES.ROTTEN: el.classList.add('rotten-land'); el.innerHTML = '💀'; break;
+            }
+            if (plot.atPlotPests.length > 0) {
+                const pContainer = document.createElement('div');
+                pContainer.className = 'flex flex-wrap items-center justify-center gap-0 w-full h-full p-1';
+                plot.atPlotPests.slice(0, 4).forEach(pest => {
+                    const p = document.createElement('div');
+                    p.className = 'leading-none wiggle';
+                    p.style.fontSize = plot.atPlotPests.length > 1 ? "1.2rem" : "1.8rem";
+                    p.innerHTML = pest.type.emoji;
+                    pContainer.appendChild(p);
+                });
+                el.appendChild(pContainer);
+            }
+        }
+
+        function spawnPest() {
+            if (isGameOver || isPaused) return;
+            const playTime = Date.now() - startTime;
+            difficulty = Math.floor(playTime / DIFFICULTY_INTERVAL) + 1;
+            updateUI();
+            const availablePlots = plots.filter(p => p.state !== STATES.EMPTY && p.state !== STATES.ROTTEN);
+            if (availablePlots.length === 0) return;
+            const maxSpawn = Math.min(Math.floor(difficulty / 2) + 1, 5);
+            const count = Math.floor(Math.random() * maxSpawn) + 1;
+            for (let i = 0; i < count; i++) {
+                const targetPlot = availablePlots[Math.floor(Math.random() * availablePlots.length)];
+                targetPlot.isTargeted = true;
+                updatePlotUI(targetPlot.id);
+                const roll = Math.random() * 100;
+                let type; let sum = 0;
+                for (const t of PEST_TYPES) { sum += t.weight; if (roll <= sum) { type = t; break; } }
+                const spawnSide = Math.floor(Math.random() * 4);
+                let startX, startY;
+                if (spawnSide === 0) { startX = Math.random() * window.innerWidth; startY = -80; }
+                else if (spawnSide === 1) { startX = window.innerWidth + 80; startY = Math.random() * window.innerHeight; }
+                else if (spawnSide === 2) { startX = Math.random() * window.innerWidth; startY = window.innerHeight + 80; }
+                else { startX = -80; startY = Math.random() * window.innerHeight; }
+                const pestEl = document.createElement('div');
+                pestEl.className = 'pest pest-moving';
+                pestEl.innerHTML = type.emoji;
+                pestEl.style.left = `${startX}px`;
+                pestEl.style.top = `${startY}px`;
+                const pestObj = { id: Math.random().toString(36).substr(2, 9), el: pestEl, targetId: targetPlot.id, hp: type.hp, type: type };
+                pestEl.onclick = (e) => { e.stopPropagation(); attackPest(pestObj); };
+                document.body.appendChild(pestEl);
+                const rect = document.getElementById(`plot-${targetPlot.id}`).getBoundingClientRect();
+                const targetX = rect.left + rect.width / 2 - 15;
+                const targetY = rect.top + rect.height / 2 - 15;
+                const baseDuration = 3500 / (1 + (difficulty * 0.08));
+                const duration = (baseDuration / type.speedMult) + (Math.random() * 800);
+                const startMoverTime = performance.now();
+                function move(now) {
+                    if (isGameOver || isPaused || !pestObj.el.parentNode) return;
+                    const elapsed = now - startMoverTime;
+                    const p = Math.min(elapsed / duration, 1);
+                    pestObj.el.style.left = `${startX + (targetX - startX) * p}px`;
+                    pestObj.el.style.top = `${startY + (targetY - startY) * p}px`;
+                    if (p < 1) requestAnimationFrame(move);
+                    else {
+                        pestObj.el.remove();
+                        targetPlot.isTargeted = false;
+                        targetPlot.atPlotPests.push(pestObj);
+                        updatePlotUI(targetPlot.id);
+                        if (!targetPlot.damageTimer) scheduleDamage(targetPlot.id);
+                    }
+                }
+                requestAnimationFrame(move);
+            }
+        }
+
+        function scheduleDamage(index) {
+            if (isGameOver || isPaused) return;
+            const plot = plots[index];
+            if (plot.atPlotPests.length === 0) { plot.damageTimer = null; return; }
+            let baseDelay = Math.max(600, 2800 / (1 + difficulty * 0.05));
+            if (plot.atPlotPests.length >= 2) baseDelay = baseDelay / 2;
+            plot.damageTimer = setTimeout(() => {
+                if (isGameOver || isPaused) return;
+                if (plot.atPlotPests.length > 0) { plot.atPlotPests = []; damagePlot(index); }
+            }, baseDelay);
+        }
+
+        function attackPest(pestObj) {
+            if (isGameOver || isPaused) return;
+            
+            playAttackSE();
+            
+            pestObj.hp--;
+            const pEl = pestObj.el.parentNode ? pestObj.el : document.getElementById(`plot-${pestObj.targetId}`);
+            if (pEl) { pEl.classList.add('shake'); setTimeout(() => pEl.classList.remove('shake'), 200); }
+            if (pestObj.hp <= 0) {
+                if (pestObj.el.parentNode) pestObj.el.remove();
+                const plot = plots[pestObj.targetId];
+                plot.atPlotPests = plot.atPlotPests.filter(p => p.id !== pestObj.id);
+                if (plot.atPlotPests.length === 0) plot.isTargeted = false;
+                pestsKilled++;
+                showFloatingText(pestObj.targetId, 'ELIMINATED!', 'text-blue-400');
+                updatePlotUI(pestObj.targetId);
+                updateUI();
+                if (plot.damageTimer) { clearTimeout(plot.damageTimer); scheduleDamage(pestObj.targetId); }
+            }
+        }
+
+        function damagePlot(index) {
+            const plot = plots[index];
+            if (plot.damageTimer) clearTimeout(plot.damageTimer);
+            plot.damageTimer = null;
+            if (plot.timer) clearInterval(plot.timer);
+            plot.state = STATES.ROTTEN;
+            plot.progress = 0;
+            plot.atPlotPests = [];
+            showFloatingText(index, "ROTTEN!", "text-red-600");
+            updatePlotUI(index);
+            checkGameOver();
+        }
+
+        function checkGameOver() {
+            if (plots.filter(p => p.state !== STATES.ROTTEN).length === 0) triggerGameOver();
+        }
+
+        function triggerGameOver() {
+            isGameOver = true;
+            stopBGM();
+            if (spawnTimer) clearTimeout(spawnTimer);
+            finalScoreEl.innerText = score;
+            finalPestsEl.innerText = pestsKilled;
+            finalLevelEl.innerText = `Level: ${difficulty}`;
+            overlay.style.display = 'flex';
+        }
+
+        function showFloatingText(index, text, colorClass) {
+            const el = document.getElementById(`plot-${index}`);
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const floating = document.createElement('div');
+            floating.className = `floating-text ${colorClass} text-lg`;
+            floating.innerText = text;
+            floating.style.left = `${rect.left + rect.width/2 - 40}px`;
+            floating.style.top = `${rect.top}px`;
+            document.body.appendChild(floating);
+            setTimeout(() => floating.remove(), 800);
+        }
+
+        function updateUI() {
+            scoreElement.innerText = score;
+            pestElement.innerText = pestsKilled;
+            levelElement.innerText = `Level: ${difficulty}`;
+        }
+
+        function startPestSpawning() {
+            const spawnLoop = () => {
+                if (isGameOver || isPaused) return;
+                const interval = Math.max(1000, 4000 - (difficulty * 150));
+                spawnPest();
+                spawnTimer = setTimeout(spawnLoop, interval + Math.random() * 1000);
+            };
+            spawnTimer = setTimeout(spawnLoop, 3000);
+        }
+    </script>
+</body>
+</html>
